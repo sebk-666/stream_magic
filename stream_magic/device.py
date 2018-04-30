@@ -312,7 +312,7 @@ class StreamMagicDevice:
 
 # Transport Controls related methods
 
-    def _get_mute_state(self):
+    def get_mute_state(self):
         """ Return the boolean state of the muting function of the device. """
         response = self._send_cmd('get_mute_state',\
             service_type='urn:schemas-upnp-org:service:RenderingControl:1',\
@@ -375,7 +375,7 @@ class StreamMagicDevice:
         response = self._send_cmd('GetAudioSource',\
                     service_type='urn:UuVol-com:service:UuVolControl:5')
         src = self._get_response_tag_value(response, 'RetAudioSourceValue')
-        return src
+        return src.lower()
 
 
     def get_power_state(self):
@@ -395,7 +395,7 @@ class StreamMagicDevice:
             get_playback_details() instead to get this information.
         """
         data = dict()
-        if self.get_audio_source().lower() == "media player":
+        if self.get_audio_source() == "media player":
             track_data = self._get_postition_info()
             f = self._get_response_tag_value # function alias to save some typing
             data['artist'] = f(track_data, 'upnp:artist')
@@ -486,7 +486,7 @@ class StreamMagicDevice:
     def get_current_preset(self):
         """ Return the id and name for the current preset. """
         for preset in self.get_preset_list():
-            if preset[2] == True:
+            if preset[2]:
                 num, name = preset[0:2]
                 return {'num': num, 'name': name}
         return None
