@@ -16,6 +16,7 @@ __author__ = 'Sebastian Kaps (sebk-666)'
 
 import socket
 
+
 class StreamMagic:
     """ This is the basic StreamMagic class.
         It provides the means to discover compatible devices on the
@@ -32,17 +33,15 @@ class StreamMagic:
 
     devices = None
 
-
     def __init__(self):
         """ Initialize instance. """
         self.devices = []
 
-
     def _send_udp(self, msg):
         """ Send the specified message to the SSDP multicast group. """
-        sock = socket.socket(socket.AF_INET, \
-                            socket.SOCK_DGRAM, \
-                            socket.IPPROTO_UDP)
+        sock = socket.socket(socket.AF_INET,
+                             socket.SOCK_DGRAM,
+                             socket.IPPROTO_UDP)
         sock.settimeout(2)
         sock.sendto(msg, StreamMagic.SSDP_GROUP)
 
@@ -55,7 +54,6 @@ class StreamMagic:
         except socket.timeout:
             pass
         return replies
-
 
     def discover(self, host=None):
         """ Send out an UDP discover message to the SSDP multicast group
@@ -86,9 +84,9 @@ class StreamMagic:
         devices = []
 
         for (addr, data) in self._send_udp(msg):
-            # Turn the reply (data) into a dict of header names and their value.
-            headers = [elem.split(": ") \
-                        for elem in data.decode("utf-8").splitlines()[1:]]
+            # Turn the response into a dict of header names and their value.
+            headers = [elem.split(": ")
+                       for elem in data.decode("utf-8").splitlines()[1:]]
 
             data = dict()
 
