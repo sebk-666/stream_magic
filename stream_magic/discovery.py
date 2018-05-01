@@ -57,10 +57,9 @@ class StreamMagic:
         return replies
 
 
-    ## TODO: only keep devices that have an AVTransport service
     def discover(self, host=None):
         """ Send out an UDP discover message to the SSDP multicast group
-            and return a list of devices that replied to it.
+            and return a list of StreamMagic devices that replied to it.
 
             Optional parameters:
             host='IP_addr': if specified, only include the host with the
@@ -96,18 +95,21 @@ class StreamMagic:
             for header in headers:
                 # If we find a header without an assiciated value,
                 # e.g. "EXT: ", assign an empty string instead.
+                # Also: lowercase the header names
                 if len(header) > 1:
-                    (key, val) = header
+                    (key, val) = str(header[0]).lower(), header[1]
                 else:
-                    (key, val) = (header[0], '')
+                    (key, val) = (str(header[0]).lower(), '')
                 data.update({key: val})
 
+            # If the device is not a StreamMagic device, discard it.
             # If a host parameter was specified, only add the matching host
-            # and discard the others.
             if host:
                 if addr[0] == host:
-                    self.devices.append((addr, data))
+                    if (data['server'].startswith("StreamMagic")):
+                        self.devices.append((addr, data))
             else:
                 if addr not in [dev[0] for dev in devices]:
-                    self.devices.append((addr, data))
+                    if (data['server'].startswith("StreamMagic")):
+                        self.devices.append((addr, data))
         return self.devices

@@ -94,9 +94,10 @@ class StreamMagicDevice:
     def _get_response_tag_value(self, response, tag):
         """ Return a tag's value extracted from an XML response by the device.
         """
-        return minidom.parseString(response)\
-                .getElementsByTagName(tag)[0]\
-                .firstChild.nodeValue
+        values = minidom.parseString(response).getElementsByTagName(tag)
+        if values:
+            return values[0].firstChild.nodeValue
+        return 'n/a'
 
 
     # this is alsp mainly copied from
@@ -244,7 +245,7 @@ class StreamMagicDevice:
                             'dataType': None
                         }
 
-    def _get_postition_info(self):
+    def _get_position_info(self):
         """ Returns a DIDL document with meta data of the currently played
             track / track position.
         """
@@ -314,7 +315,7 @@ class StreamMagicDevice:
 
     def get_mute_state(self):
         """ Return the boolean state of the muting function of the device. """
-        response = self._send_cmd('get_mute_state',\
+        response = self._send_cmd('GetMute',\
             service_type='urn:schemas-upnp-org:service:RenderingControl:1',\
             Channel='Master')
         state = self._get_response_tag_value(response, 'CurrentMute')
@@ -369,8 +370,9 @@ class StreamMagicDevice:
 # Methods to retrieve various information from the device.
 
     def get_audio_source(self):
-        """ Return the currently selected audio source (i.e. "Internet Radio"
-            or Media Player)
+        """ Return the currently selected audio source in lowercase
+            (i.e. "internet radio", "media player" or "other")
+            The device returns "other" if it is used as DAC.
         """
         response = self._send_cmd('GetAudioSource',\
                     service_type='urn:UuVol-com:service:UuVolControl:5')
@@ -379,11 +381,11 @@ class StreamMagicDevice:
 
 
     def get_power_state(self):
-        """ Returns the power state of the device (ON or OFF). """
+        """ Returns the power state of the device ('on', 'off'). """
         response = self._send_cmd('GetPowerState',\
                      service_type='urn:UuVol-com:service:UuVolControl:5')
         pwState = self._get_response_tag_value(response, 'RetPowerStateValue')
-        return str(pwState)
+        return str(pwState).lower()
 
 
     def get_current_track_info(self):
@@ -396,7 +398,7 @@ class StreamMagicDevice:
         """
         data = dict()
         if self.get_audio_source() == "media player":
-            track_data = self._get_postition_info()
+            track_data = self._get_position_info()
             f = self._get_response_tag_value # function alias to save some typing
             data['artist'] = f(track_data, 'upnp:artist')
             data['trackTitle'] = f(track_data, 'dc:title')
@@ -484,7 +486,7 @@ class StreamMagicDevice:
 
 
     def get_current_preset(self):
-        """ Return the id and name for the current preset. """
+        """ Return the id and name for the current preset - or None if n/a. """
         for preset in self.get_preset_list():
             if preset[2]:
                 num, name = preset[0:2]

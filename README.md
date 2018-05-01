@@ -25,7 +25,7 @@ Each returned list item uses the following data structure:
 `[(addr, data), ...]` with
 
  * `addr`: a`(str, int)` tuple with the IP address and the port of a discovered device.
- * `data`: a `{HEADER: value}` dictionary containg the device's response headers and their values (e.g. `LOCATION:`, `SERVER:`)
+ * `data`: a `{header: value}` dictionary containg the device's response headers (in lower case) and their values (e.g. `location:`, `server:`)
 
 You can add an `host=<ip address>` argument to the `discover()` method, to only return the device with the specified IP address.
 
@@ -51,8 +51,8 @@ devices = sm.discover()
 
 for dev in devices:
     host, port = dev[0][0:2]
-    description = dev[1]['SERVER']
-    scpdurl = dev[1]['LOCATION']    # URL of the root Service Control Point Definition XML document
+    description = dev[1]['server']
+    scpdurl = dev[1]['location']    # URL of the root Service Control Point Definition XML document
     print ('Found device:')
     print ('Host: %s, Port: %d, Description: %s, SCPD URL: %s' %\
             host, port, description, scpdurl)
