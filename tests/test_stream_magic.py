@@ -1,15 +1,20 @@
 """ stream_magic test suite
 """
 import sys
-from socket import gethostbyname
+from socket import gethostbyname, gaierror
 import random
 import string
+import pytest
 sys.path.append("..")
 from stream_magic import discovery
 from stream_magic import device
 
+try:
+    HOST = gethostbyname('cambridge')
+except gaierror:
+    pytest.skip("Test runs require communicating with\
+                 an actual StreamMagic device.", allow_module_level=True)
 
-HOST = gethostbyname('cambridge')
 DEVICE_OBJECT = None
 
 def test_discover_multi():
