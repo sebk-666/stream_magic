@@ -4,18 +4,31 @@ import sys
 from socket import gethostbyname, gaierror
 import random
 import string
+import os
 import pytest
 sys.path.append("..")
 from stream_magic import discovery
 from stream_magic import device
 
+DEVICE_OBJECT = None
+TESTRUN_LOCAL = True
+DEVICE_DISCONNECTED = False
+
+
+# Check if the test device's name resolves (it does on the local network) and
+# if the device is online. Skip all tests if that fails.
 try:
     HOST = gethostbyname('cambridge')
+    if os.system("ping -c 1 -t 1 " + HOST):
+        TESTRUN_LOCAL = False
+        pytest.skip("Test runs require communicating with\
+                 an actual StreamMagic device.", allow_module_level=True)
 except gaierror:
     pytest.skip("Test runs require communicating with\
                  an actual StreamMagic device.", allow_module_level=True)
 
-DEVICE_OBJECT = None
+@pytest.mark.skipif(TESTRUN_LOCAL is False,
+                   reason="Test runs require access to a StreamMagic device.")
 
 def test_discover_multi():
     # test object creation
@@ -24,7 +37,7 @@ def test_discover_multi():
 
     # test discovering without explicit host
     sm_devices = sm_object.discover()
-    assert len(sm_devices) >= 1
+    assert sm_devices
     dev = sm_devices[0] # get the first data set from the list
 
     # simple checks for data consistency
@@ -40,7 +53,7 @@ def test_discover_multi():
 
     # location header starts with http and ends with xml
     assert str(dev[1]['location']).startswith("http")
-    assert str(dev[1]['location']).lower().endswith("xml")
+    assert str(v[1]['location']).lower().endswith("xml")
 
 def test_discover_single():
     """ test discovering a user-specified host """
