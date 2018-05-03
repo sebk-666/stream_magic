@@ -16,6 +16,7 @@ __author__ = 'Sebastian Kaps (sebk-666)'
 
 import urllib.request
 from urllib.parse import urlparse
+from urllib.error import HTTPError, URLError
 from xml.dom import minidom
 from . import discovery
 
@@ -41,7 +42,9 @@ class StreamMagicDevice:
     actions = dict()
 
     def __init__(self, host, port, description, location, name='Unknown'):
-        """ Initialize instance
+        """ Initialize instance, fetch the root service control point
+            description XML document and populate the objects data structures.
+
             host: host name or ip address and port of the device
             description: device description, e.g. SERVER header value
             location: root service control point definition url (LOCATION:)
@@ -51,6 +54,32 @@ class StreamMagicDevice:
         self.description = description
         self.location = location
         self._name = name
+
+        # fetch the root scpd xml document
+        root_xml = self._get_scpd(location)
+
+        # set self.urlBase from urlBase tag or,
+        # if this is not specified, from the location parameter
+        urlbase = root_xml.getElementsByTagName('urlBase')
+        if urlbase:
+            urlbase = self._xml_get_node_text(urlbase[0].rstrip('/'))
+        else:
+            urlbase = urlparse(location)
+            urlbase = '%s://%s' % (urlbase.scheme, urlbase.netloc)
+
+        for node in root_xml.getElementsByTagName('service'):
+            service_type = self._xml_get_node_text(
+                           node.getElementsByTagName('serviceType')[0])
+
+            control_url = '%s%s' % (urlbase, self._xml_get_node_text(
+                         node.getElementsByTagName('controlURL')[0]))
+
+            scpd_url = '%s%s' % (urlbase, self._xml_get_node_text(
+                      node.getElementsByTagName('SCPDURL')[0]))
+
+            self.services.update({service_type: {'scpdUrl': scpd_url,
+                                                 'ctrlUrl': control_url}})
+
 
     @property
     def name(self):
@@ -62,19 +91,18 @@ class StreamMagicDevice:
         """ set a friendly name for the device """
         self._name = new_name
 
-    def _get_scpd(self, scpdUrl=None):
+    def _get_scpd(self, scpdurl=None):
         """ Download the SCPD XML file from the device and
             return it as a minidom object.
         """
         try:
-            scpdUrl = scpdUrl or self.location
-            with urllib.request.urlopen(scpdUrl) as response:
+            scpdurl = scpdurl or self.location
+            with urllib.request.urlopen(scpdurl) as response:
                 return minidom.parseString(response.read())
-        except Exception as e:
+        except (HTTPError, URLError) as ex:
             print("Something went wrong fetching the SCPD XML file from %s"
-                  % self.host, e)
+                  % self.host, ex)
         return None
-
 # ------ Helper Functions ------
 
     # this was taken from
@@ -94,37 +122,6 @@ class StreamMagicDevice:
         if values:
             return values[0].firstChild.nodeValue
         return 'n/a'
-
-    # this is alsp mainly copied from
-    # https://www.electricmonk.nl/log/2016/07/05/exploring-upnp-with-python/
-    def _setup(self):
-        """ Download the SCPD XML file from the device, extract the urlBase
-            and ControlURL from it and update the corresponding instance
-            attributes.
-        """
-        rootXml = self._get_scpd()
-
-        # set self.urlBase from urlBase tag or, if it is not specified,
-        # from scpdurl
-        urlBase = rootXml.getElementsByTagName('urlBase')
-        if urlBase:
-            urlBase = self._xml_get_node_text(urlBase[0].rstrip('/'))
-        else:
-            urlBase = urlparse(self.location)
-            urlBase = '%s://%s' % (urlBase.scheme, urlBase.netloc)
-
-        for node in rootXml.getElementsByTagName('service'):
-            service_type = self._xml_get_node_text(
-                           node.getElementsByTagName('serviceType')[0])
-
-            controlUrl = '%s%s' % (urlBase, self._xml_get_node_text(
-                         node.getElementsByTagName('controlURL')[0]))
-
-            scpdUrl = '%s%s' % (urlBase, self._xml_get_node_text(
-                      node.getElementsByTagName('SCPDURL')[0]))
-
-            self.services.update({service_type: {'scpdUrl': scpdUrl,
-                                                 'ctrlUrl': controlUrl}})
 
     def _print_services(self):
         """ Print the services that are registered for a device and the
@@ -208,8 +205,8 @@ class StreamMagicDevice:
             associated actions retrieved from the SCPD XML documents.
         """
         for service in self.services:
-            scpdUrl = self.services[service]['scpdUrl']
-            xml = self._get_scpd(scpdUrl)
+            scpd_url = self.services[service]['scpdUrl']
+            xml = self._get_scpd(scpd_url)
 
             for node in xml.getElementsByTagName('action'):
                 action = self._xml_get_node_text(
