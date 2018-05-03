@@ -81,7 +81,7 @@ class StreamMagic:
             b'MAN:"ssdp:discover"\r\n' \
             b'\r\n'
 
-        devices = []
+        discovered_devices = []
 
         for (addr, data) in self._send_udp(msg):
             # Turn the response into a dict of header names and their value.
@@ -107,7 +107,9 @@ class StreamMagic:
                     if (data['server'].startswith("StreamMagic")):
                         self.devices.append((addr, data))
             else:
-                if addr not in [dev[0] for dev in devices]:
+                if addr not in [dev[0] for dev in discovered_devices]:
                     if (data['server'].startswith("StreamMagic")):
                         self.devices.append((addr, data))
-        return self.devices
+        if self.devices:
+            return self.devices
+        return None
