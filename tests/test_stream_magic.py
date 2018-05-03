@@ -13,6 +13,8 @@ from stream_magic import device
 DEVICE_OBJECT = None
 TESTRUN_LOCAL = True
 DEVICE_DISCONNECTED = False
+SMDEVICE_FAIL = True
+ERR_TEXT = "Failed to create StreamMagicDevice instance."
 
 
 # Check if the test device's name resolves (it does on the local network) and
@@ -39,7 +41,6 @@ def test_discover_multi():
     sm_devices = sm_object.discover()
     assert sm_devices
     dev = sm_devices[0] # get the first data set from the list
-
     # simple checks for data consistency
 
     # IP: splitting at the dots should give us exactly 4 parts
@@ -53,11 +54,11 @@ def test_discover_multi():
 
     # location header starts with http and ends with xml
     assert str(dev[1]['location']).startswith("http")
-    assert str(v[1]['location']).lower().endswith("xml")
+    assert str(dev[1]['location']).lower().endswith("xml")
 
 def test_discover_single():
     """ test discovering a user-specified host """
-    global DEVICE_OBJECT
+    global DEVICE_OBJECT, SMDEVICE_FAIL
     sm_object = discovery.StreamMagic()
 
     # test if specifying a wrong host ip returns None
@@ -66,6 +67,7 @@ def test_discover_single():
 
     # now try with an actual host's ip
     sm_devices = sm_object.discover(host=HOST)
+    assert sm_devices
     try:
         dev = sm_devices[0]
         host, port = dev[0][0:2]
@@ -76,8 +78,11 @@ def test_discover_single():
 
     # instantiate a StreamMagicDevice object with the data we gathered
     DEVICE_OBJECT = device.StreamMagicDevice(host, port, desc, scpdurl)
-    assert isinstance(DEVICE_OBJECT, device.StreamMagicDevice)
+    if isinstance(DEVICE_OBJECT, device.StreamMagicDevice):
+        SMDEVICE_FAIL = False
+    assert not SMDEVICE_FAIL
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_smdev_name():
     """ test assigning a random name """
     global DEVICE_OBJECT
@@ -87,11 +92,11 @@ def test_smdev_name():
     DEVICE_OBJECT.name = random_name
     assert DEVICE_OBJECT.name == random_name
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_serviceinfo():
     """ Test the services, actions and action parameters returned by the device. """
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
-    dobj._setup()
     services = dobj.get_services()
 
     svc_spec = 'urn:schemas-upnp-org:service:AVTransport:1'
@@ -106,27 +111,32 @@ def test_get_serviceinfo():
     a_pinfo = dobj.get_parameter_info(svc_spec, 'Play', 'InstanceID')
     assert 'direction' in a_pinfo.keys()
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_mute_state():
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
     assert isinstance(dobj.get_mute_state(), bool)
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_transport_state():
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
     assert dobj.get_transport_state() in ['PLAYING', 'PAUSED', 'STOPPED']
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_audio_source():
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
     assert dobj.get_audio_source() in ['internet radio', 'media player', 'other']
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_power_state():
     """ Check if get_power_state() returns 'on' """
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
     assert dobj.get_power_state() == "on"
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_current_track_info():
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
@@ -134,6 +144,7 @@ def test_get_current_track_info():
     assert set(('artist', 'trackTitle', 'albumArtURI',
                 'genre', 'origTrackNo', 'album')) == set(trinfo.keys())
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_preset_list():
     """ Check the preset list returned by the device. """
     global DEVICE_OBJECT
@@ -142,6 +153,7 @@ def test_get_preset_list():
     assert presets                  # list is not empty
     assert len(presets[0]) == 3     # list items contain 3 elements
 
+@pytest.mark.skipif(not SMDEVICE_FAIL, reason=ERR_TEXT)
 def test_get_playback_details():
     global DEVICE_OBJECT
     dobj = DEVICE_OBJECT
