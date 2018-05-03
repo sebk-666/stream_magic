@@ -79,11 +79,6 @@ mydevice = device.StreamMagicDevice(host, port, description, scpdurl, name="Azur
 Complete description of the public methods exposed by a `StreamMagicDevice` object.
 
 
-#### `_setup()`
-This one is likely to change in the near future.
-The `_setup()` method currently needs to be called once per device to populate the device object's internal data structures that hold the services offered by the device and the corresponding specifications and access data.
-
-
 #### `get_services()`
 
 Returns a list of service specifiers for services offered by the device. These would typically include:
