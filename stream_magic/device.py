@@ -318,7 +318,7 @@ class StreamMagicDevice:
         return response
 
     def get_transport_state(self):
-        """ Return the transport state: PLAYING, STOPPED or PAUSED """
+        """ Return the transport state: PLAYING, STOPPED or PAUSED_PLAYBACK """
         response = self._send_cmd('GetTransportInfo')
         state = self._get_response_tag_value(response, 'CurrentTransportState')
         return state
