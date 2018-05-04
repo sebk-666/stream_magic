@@ -14,6 +14,7 @@ information from the device as well as control the device.
 __version__ = '0.01'
 __author__ = 'Sebastian Kaps (sebk-666)'
 
+from time import sleep
 import urllib.request
 from urllib.parse import urlparse
 from urllib.error import HTTPError, URLError
@@ -21,7 +22,6 @@ from xml.dom import minidom
 from . import discovery
 
 StreamMagic = discovery.StreamMagic()
-
 
 class StreamMagicDevice:
     """ Representation of a DLNA Media Player (UPnP-AV renderer) device.
@@ -33,6 +33,7 @@ class StreamMagicDevice:
     description = None  # device description, e.g. value of SERVER: header
     location = None  # root scpd url from the LOCATION header
     _name = None  # friendly name of the device
+    _pwrstate = None
 
     # dictionary containing mapping of service type to scpdUrl and ctrlUrl:
     # {'Service Type': {'scpdUrl': 'SCPD XML URL', 'ctrlUrl': 'Control URL'}}
@@ -79,6 +80,7 @@ class StreamMagicDevice:
 
             self.services.update({service_type: {'scpdUrl': scpd_url,
                                                  'ctrlUrl': control_url}})
+        self._pwrstate = self.get_power_state()
 
 
     @property
@@ -307,6 +309,14 @@ class StreamMagicDevice:
         state = bool(int(state))
         return state
 
+    def volume_mute(self, state=True):
+        """ Mute (default) or unmute the device. """
+        svc_type = 'urn:schemas-upnp-org:service:RenderingControl:1'
+        response = self._send_cmd('SetMute', service_type=svc_type,
+                                  DesiredMute=state,
+                                  Channel='Master')
+        return response
+
     def get_transport_state(self):
         """ Return the transport state: PLAYING, STOPPED or PAUSED """
         response = self._send_cmd('GetTransportInfo')
@@ -322,25 +332,55 @@ class StreamMagicDevice:
         """ Start playback.  """
         # The 'Play' command returns a SOAP error when issued while the
         # device is already play back some file. So make sure to catch that.
-        if self.get_transport_state is not 'PLAYING':
-            response = self._send_cmd('Play', Speed=1)
-            return response
-        else:
-            return None
+        # Additionally, playing a stopped internet radio source results in a
+        # SOAP error.
+        # So implementing "play" by simulating a key press instead.
+        if self.get_transport_state() != 'PLAYING':
+            return self.trnsport_play_pause()
+#            audio_source = self.get_audio_source()
+#            if audio_source == "media player":
+#                response = self._send_cmd('Play', Speed=1)
+#                return response
+        return None
 
     def trnsprt_next(self):
         """ Skip to next track. """
-        response = self._send_cmd('Next')
+        # this returns a SOAP error
+        #response = self._send_cmd('Next')
+        #return response
+        svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
+        response = self._send_cmd('KeyPressed', Key='SKIP_NEXT',
+                   Duration='SHORT', service_type=svc_type,
+                   omitInstanceId=True)
         return response
 
-    def trnsprt_prev(self):
-        """ Skip to previous track. """
-        response = self._send_cmd('Previous')
+    def trnsprt_prev(self, press_twice=False):
+        """ Jump to the beginning of the current track.
+            Supply press_twice=True argument to actually jump to
+            the previous track.
+        """
+        # this returns a SOAP error
+        #response = self._send_cmd('Previous')
+        #return response
+        svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
+        response = self._send_cmd('KeyPressed', Key='SKIP_PREVIOUS',
+                   Duration='SHORT', service_type=svc_type,
+                   omitInstanceId=True)
+        if press_twice:
+            self.trnsprt_prev()
         return response
 
     def trnsprt_stop(self):
         """ Stop playback """
         response = self._send_cmd('Stop')
+        return response
+
+    def trnsport_play_pause(self):
+        """ Toggle play/pause by simulating a key press. """
+        svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
+        response = self._send_cmd('KeyPressed', Key='PLAY_PAUSE',
+                   Duration='SHORT', service_type=svc_type,
+                   omitInstanceId=True)
         return response
 
 # Methods to retrieve various information from the device.
@@ -356,7 +396,7 @@ class StreamMagicDevice:
         return src.lower()
 
     def get_power_state(self):
-        """ Returns the power state of the device ('on', 'off'). """
+        """ Returns the power state of the device ('on', 'off' or 'idle'). """
         svc_type = 'urn:UuVol-com:service:UuVolControl:5'
         response = self._send_cmd('GetPowerState', service_type=svc_type)
         pwState = self._get_response_tag_value(response, 'RetPowerStateValue')
@@ -474,6 +514,20 @@ class StreamMagicDevice:
 
     def get_playback_details(self):
         """ Return a dict with details for the currently playing Stream"""
+        # if the device is not 'on', don't try to retrieve any data
+        if self._pwrstate != 'on':
+            return None
+
+        # return a dict with empty string values when device is
+        # still transitioning to the PLAYING state
+        if self.get_transport_state() == 'TRANSITIONING':
+            return {'state': '', 'format': '', 'artist': '', 'stream': ''}
+
+        # alternative: actively wait until the state changes.
+        # which can be about 5-6 seconds.
+        #while self.get_transport_state() == 'TRANSITIONING':
+        #    sleep(0.5)
+
         # register navigator id, get the playback info...
         nid = self._navigator_register()
         svc_type = 'urn:UuVol-com:service:UuVolControl:5'
@@ -513,14 +567,37 @@ class StreamMagicDevice:
                 'artist': artist, 'stream': stream}
         return data
 
+# Misc methods
+
+    def power_on(self):
+        """ Power on the device.
+            Only works if device is set to Network standby mode (not ECO).
+        """
+        svc_type = 'urn:UuVol-com:service:UuVolControl:5'
+        response = self._send_cmd('SetPowerState', NewPowerStateValue='ON',
+                                  service_type=svc_type, omitInstanceId=True)
+        self._pwrstate = 'on'
+        return response
+
+    def power_off(self, power_state='OFF'):
+        """ Power off the device. """
+        if power_state not in ['OFF', 'IDLE']:
+            return None
+        svc_type = 'urn:UuVol-com:service:UuVolControl:5'
+        response = self._send_cmd('SetPowerState',
+                                  NewPowerStateValue=power_state,
+                                  service_type=svc_type, omitInstanceId=True)
+        self._pwrstate = power_state.lower()
+        return response
+
 # ------------------------------------
     def dev_check(self):
         """ return testing stuff """
-       # response = self._send_cmd('GetStationId', service_type='urn:UuVol-com:service:UuVolControl:5')
+        #response = self._send_cmd('GetStationId', service_type='urn:UuVol-com:service:UuVolControl:5')
        # response = self._send_cmd('ListPresets', service_type='urn:schemas-upnp-org:service:RenderingControl:1')
 
  #       return self._getCurrentPreset()
-
+        #response = self._send_cmd('Next', omitInstanceId=True)
+        #return response
         return self.description
-        # return self.
         # return minidom.parseString(response).toprettyxml()
