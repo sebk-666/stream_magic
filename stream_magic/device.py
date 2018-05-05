@@ -11,10 +11,9 @@ information from the device as well as control the device.
 # and largely inspired by Ferry Boender's tutorial at:
 # https://www.electricmonk.nl/log/2016/07/05/exploring-upnp-with-python/
 
-__version__ = '0.01'
+__version__ = '0.10'
 __author__ = 'Sebastian Kaps (sebk-666)'
 
-from time import sleep
 import urllib.request
 from urllib.parse import urlparse
 from urllib.error import HTTPError, URLError
@@ -22,6 +21,7 @@ from xml.dom import minidom
 from . import discovery
 
 StreamMagic = discovery.StreamMagic()
+
 
 class StreamMagicDevice:
     """ Representation of a DLNA Media Player (UPnP-AV renderer) device.
@@ -81,7 +81,6 @@ class StreamMagicDevice:
             self.services.update({service_type: {'scpdUrl': scpd_url,
                                                  'ctrlUrl': control_url}})
         self._pwrstate = self.get_power_state()
-
 
     @property
     def name(self):
@@ -196,11 +195,13 @@ class StreamMagicDevice:
 
         ctrlUrl = self._get_service_data(service_type)['ctrlUrl']
 
-        response = urllib.request\
-                         .urlopen(urllib.request.Request(ctrlUrl,
-                                                         str.encode(soapBody),
-                                                         headers))
-        return response.read()
+        request = urllib.request.Request(ctrlUrl, str.encode(soapBody),
+                                         headers)
+        try:
+            response = urllib.request.urlopen(request, timeout=2)
+            return response.read()
+        except URLError:
+            return None
 
     def _update_actions(self):
         """ Fill the self.actions class attribute with the services and
@@ -346,12 +347,12 @@ class StreamMagicDevice:
     def trnsprt_next(self):
         """ Skip to next track. """
         # this returns a SOAP error
-        #response = self._send_cmd('Next')
-        #return response
+        # response = self._send_cmd('Next')
+        # return response
         svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
         response = self._send_cmd('KeyPressed', Key='SKIP_NEXT',
-                   Duration='SHORT', service_type=svc_type,
-                   omitInstanceId=True)
+                                  Duration='SHORT', service_type=svc_type,
+                                  omitInstanceId=True)
         return response
 
     def trnsprt_prev(self, press_twice=False):
@@ -360,12 +361,12 @@ class StreamMagicDevice:
             the previous track.
         """
         # this returns a SOAP error
-        #response = self._send_cmd('Previous')
-        #return response
+        # response = self._send_cmd('Previous')
+        # return response
         svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
         response = self._send_cmd('KeyPressed', Key='SKIP_PREVIOUS',
-                   Duration='SHORT', service_type=svc_type,
-                   omitInstanceId=True)
+                                  Duration='SHORT', service_type=svc_type,
+                                  omitInstanceId=True)
         if press_twice:
             self.trnsprt_prev()
         return response
@@ -379,8 +380,8 @@ class StreamMagicDevice:
         """ Toggle play/pause by simulating a key press. """
         svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
         response = self._send_cmd('KeyPressed', Key='PLAY_PAUSE',
-                   Duration='SHORT', service_type=svc_type,
-                   omitInstanceId=True)
+                                  Duration='SHORT', service_type=svc_type,
+                                  omitInstanceId=True)
         return response
 
 # Methods to retrieve various information from the device.
@@ -399,8 +400,11 @@ class StreamMagicDevice:
         """ Returns the power state of the device ('on', 'off' or 'idle'). """
         svc_type = 'urn:UuVol-com:service:UuVolControl:5'
         response = self._send_cmd('GetPowerState', service_type=svc_type)
-        pwState = self._get_response_tag_value(response, 'RetPowerStateValue')
-        return str(pwState).lower()
+        if response:
+            pwstate = self._get_response_tag_value(response,
+                                                   'RetPowerStateValue')
+            return str(pwstate).lower()
+        return None
 
     def get_current_track_info(self):
         """ When the audio source is "media player":
@@ -525,8 +529,8 @@ class StreamMagicDevice:
 
         # alternative: actively wait until the state changes.
         # which can be about 5-6 seconds.
-        #while self.get_transport_state() == 'TRANSITIONING':
-        #    sleep(0.5)
+        # while self.get_transport_state() == 'TRANSITIONING':
+        #     sleep(0.5)
 
         # register navigator id, get the playback info...
         nid = self._navigator_register()
@@ -538,21 +542,24 @@ class StreamMagicDevice:
         if self._navigator_is_registered(nid):
             self._navigator_release(nid)
 
-        pbd = minidom.parseString(pb_details)\
-                     .getElementsByTagName('playback-details')[0]
+        try:
+            pbd = minidom.parseString(pb_details)\
+                        .getElementsByTagName('playback-details')[0]
 
-        state = pbd.getElementsByTagName('state')[0]\
-                   .firstChild.nodeValue
+            state = pbd.getElementsByTagName('state')[0]\
+                       .firstChild.nodeValue
 
-        fmt = dict(pbd.getElementsByTagName('format')[0]
-                      .attributes.items())
+            fmt = dict(pbd.getElementsByTagName('format')[0]
+                          .attributes.items())
 
-        artist = pbd.getElementsByTagName('artist')[0]\
-                    .firstChild.nodeValue
+            artist = pbd.getElementsByTagName('artist')[0]\
+                        .firstChild.nodeValue
 
-        stream = pbd.getElementsByTagName('stream')[0]\
-                    .getElementsByTagName('title')[0]\
-                    .firstChild.nodeValue
+            stream = pbd.getElementsByTagName('stream')[0]\
+                        .getElementsByTagName('title')[0]\
+                        .firstChild.nodeValue
+        except IndexError:
+            pass
 
         # example response:
         # {'state': 'Playing',
@@ -589,15 +596,3 @@ class StreamMagicDevice:
                                   service_type=svc_type, omitInstanceId=True)
         self._pwrstate = power_state.lower()
         return response
-
-# ------------------------------------
-    def dev_check(self):
-        """ return testing stuff """
-        #response = self._send_cmd('GetStationId', service_type='urn:UuVol-com:service:UuVolControl:5')
-       # response = self._send_cmd('ListPresets', service_type='urn:schemas-upnp-org:service:RenderingControl:1')
-
- #       return self._getCurrentPreset()
-        #response = self._send_cmd('Next', omitInstanceId=True)
-        #return response
-        return self.description
-        # return minidom.parseString(response).toprettyxml()
