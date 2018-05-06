@@ -109,54 +109,90 @@ Returns information about the parameter's arguments, such as the expected data t
 
 Returns `True` if the device is currently muted and `False` if it is not.
 
+#### `volume_mute(state=True)`
+
+Mutes or unmutes the device, depending on the optional _state_ (boolean) parameter.
+If omitted, _state_ defaults to _True_, which turns the mute function on.
+Setting it to _False_ unmutes the device.
+
+Note: This has no effect, if the device is not configured as pre-amplifier.
 
 #### `get_transport_state()`
 
-Returns `PLAYING`, `PAUSED` or `STOPPED` depending on the current operation of the device.
-
+Returns `PLAYING`, `PAUSED_PLAYBACK`, `STOPPED` or `TRANSITIONING` depending on the current operation of the device.
+The `TRANSITIONING` state might occur during the connection establishment phase when starting playback of an internet radio source, for example.
 
 #### `trnsprt_pause()`
 Pause playback.
 
-
 #### `trnsprt_play()`
 Start playing.
 
+#### `trnsprt_play_pause()`
+Toggles the device operation between `Play` and `Pause`.
 
 #### `trnsprt_next()` / `trnsprt_prev()`
 Skip playback to the next / previous track.
 
-
 #### `trnsprt_stop()`
-Stop playback.
-
+Stops playback.
 
 #### `get_audio_source()`
-Returns either `media player`or `internet radio`, depending of the currently playing media.
-
+Returns either `media player`, `internet radio` or `other` depending of the currently playing media.
 
 #### `get_power_state()`
-Returns either `ON` or `OFF`. When the device is configured for Eco-Standby, it's not receiving network packets and thus will only reply with `ON` when it's powered on.
+Returns either `ON`, `OFF` or `IDLE`. 
 
+When the device is configured for _ECO_ standby mode, it will not receive or answer any network packets when powered off. The device will respond with `OFF` only in the short time between issuing the power off command and the device actually turning off.
+
+When the device is configured for _network standby_ mode, it will respond with `IDLE` when it is turned off.
+
+#### `power_on()`
+Will turn on the device, if in _network standby_ mode.
+
+#### `power_off(power_state='OFF')`
+With the optional _power\_state_ parameter set to 'OFF' (the default), turns the device completely off. If _power\_state_ is set to `IDLE`, switches to _network standby_ mode.
+
+Note: This ignores the standby setting that is configured in the device menu.
+If the device is configured for _ECO standby_ through the device menu, `power_off(power_state='IDLE')` will still only switch it in to _network standby_ mode and vice versa.
 
 #### `get_current_track_info()`
 When the device is operating in `media player` mode (i.e. playing back files from a local server or storage device`), returns a dict with track information like artist, title, genre and also an URI pointing to the album cover image.
 
 
 #### `get_preset_list()`
-Returns a list containing the number and description of the device's Internet radio presets.
+Returns a list containing the number and description of the device's Internet radio presets, e.g.:
 
+```python
+[[1, 'Preset One', False], [2, 'Preset Two', True], [3, 'Preset Three', False]]
+```
+The third element in each of the sub-lists is set to _True_ when this preset is currently playing and _False_ otherwise.
 
 #### `get_current_preset()`
-Returns the number and name of the currently playing preset (if any) and `None` otherwise.
+Returns the number and name of the currently playing preset (if any) as a dictionary and `None` otherwise, e.g.:
 
+```python
+{'num': 1, 'name': 'Preset One'}
+```
 
 #### `play_preset(number)`
 Plays the preset with the specified number. Valid numbers can be retrieved with the `get_preset_list()` method.
 
 
 #### `get_playback_details()`
-When playing an Internet radio stream, this will return the information for the stream itself as well as the currently playing song.
+When playing an Internet radio stream, this will return a dictionary containing information for the stream itself as well as the currently playing song, e.g.:
+
+```python
+{'state': 'Playing',
+ 'format': {'codec': 'MP3',
+            'sample-rate': '44100',
+            'vbr': '0',
+            'bit-rate': '320000',
+            'bit-depth': '16'},
+ 'artist': 'Derek And The Dominos - Layla',
+ 'stream': 'Psychomed: Rock & Blues'}
+}
+```
 
 
 

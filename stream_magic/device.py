@@ -337,12 +337,16 @@ class StreamMagicDevice:
         # SOAP error.
         # So implementing "play" by simulating a key press instead.
         if self.get_transport_state() != 'PLAYING':
-            return self.trnsport_play_pause()
-#            audio_source = self.get_audio_source()
-#            if audio_source == "media player":
-#                response = self._send_cmd('Play', Speed=1)
-#                return response
+            return self.trnsprt_play_pause()
         return None
+
+    def trnsprt_play_pause(self):
+        """ Toggle play/pause by simulating a key press. """
+        svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
+        response = self._send_cmd('KeyPressed', Key='PLAY_PAUSE',
+                                  Duration='SHORT', service_type=svc_type,
+                                  omitInstanceId=True)
+        return response
 
     def trnsprt_next(self):
         """ Skip to next track. """
@@ -376,13 +380,6 @@ class StreamMagicDevice:
         response = self._send_cmd('Stop')
         return response
 
-    def trnsport_play_pause(self):
-        """ Toggle play/pause by simulating a key press. """
-        svc_type = 'urn:UuVol-com:service:UuVolSimpleRemote:1'
-        response = self._send_cmd('KeyPressed', Key='PLAY_PAUSE',
-                                  Duration='SHORT', service_type=svc_type,
-                                  omitInstanceId=True)
-        return response
 
 # Methods to retrieve various information from the device.
 
