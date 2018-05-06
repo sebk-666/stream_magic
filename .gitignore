@@ -2,7 +2,7 @@
 test.py
 gen_doc.py
 sync.sh
-buildpackage.sh
+release_pypi.sh
 
 
 # Byte-compiled / optimized / DLL files
