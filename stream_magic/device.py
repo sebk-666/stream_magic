@@ -313,10 +313,42 @@ class StreamMagicDevice:
     def volume_mute(self, state=True):
         """ Mute (default) or unmute the device. """
         svc_type = 'urn:schemas-upnp-org:service:RenderingControl:1'
+        # param order is important: Channel= before DesiredMute=
         response = self._send_cmd('SetMute', service_type=svc_type,
-                                  DesiredMute=state,
-                                  Channel='Master')
+                                  Channel='Master', DesiredMute=int(state))
         return response
+
+    def get_volume_control(self):
+        """ Return True if the device supports volume control (pre-amp mode),
+            and False otherwise.
+        """
+        svc_type = 'urn:UuVol-com:service:UuVolControl:5'
+        response = self._send_cmd('GetVolumeControl', service_type=svc_type,
+                                  omitInstanceId=True)
+        return bool(int(self._get_response_tag_value(response, 'Enabled')))
+
+    def get_volume(self):
+        """ Return the current volume setting. """
+        svc_type = 'urn:schemas-upnp-org:service:RenderingControl:1'
+        response = self._send_cmd('GetVolume', service_type=svc_type,
+                                  Channel='Master')
+        volume = self._get_response_tag_value(response, 'CurrentVolume')
+        return volume
+
+    def get_volume_max(self):
+        """ Return the maximum volume setting. """
+        svc_type = 'urn:schemas-upnp-org:service:RenderingControl:1'
+        response = self._send_cmd('GetVolumeMax', service_type=svc_type)
+        return self._get_response_tag_value(response, 'CurrentVolumeMax')
+
+    def set_volume(self, volume):
+        """ Set the volume to the specified value.
+            There's no check regarding the validity of the specified value.
+        """
+        svc_type = 'urn:schemas-upnp-org:service:RenderingControl:1'
+        self._send_cmd('SetVolume', service_type=svc_type, Channel='Master',
+                       DesiredVolume=volume)
+        return None
 
     def get_transport_state(self):
         """ Return the transport state: PLAYING, STOPPED or PAUSED_PLAYBACK """
