@@ -1,11 +1,11 @@
-## Note: This is still a very early a work in progress version. Things will change.
-
 # Python Package to Support Cambridge Audio Network Audio Players (Stream Magic)
 
 This is a simple package to provide basic support for Cambridge Audio's Network Audio Players.
 It currently has only been tested with the Azur 851N model, but should be compatible with other models too.
-As all functions are based on the UPnP-AV (DLNA) standard, there's a good possibility that other DLNA audio players will work as well.
-Though they might differ in some details, breaking stuff.
+
+As all functions are based on the UPnP-AV (DLNA) standard, there's a good possibility that other DLNA audio players will work as well - however, some code changes will be required as the _discovery.discover()_ method only lists StreamMagic devices.
+
+This is still a work in progress, so things might change.
 
 # How to use
 
@@ -116,6 +116,24 @@ If omitted, _state_ defaults to _True_, which turns the mute function on.
 Setting it to _False_ unmutes the device.
 
 Note: This has no effect, if the device is not configured as pre-amplifier.
+
+#### `get_volume_control()`
+
+Returns _True_ if the device volume can be controlled (i.e. in pre-amp mode) and _False_ otherwise.
+
+####  `get_volume()`
+
+Returns the current volume level as an integer between 0..30 (for my device).
+
+#### `get_volume_max()`
+
+Returns the maximum volume level the device supports (which is 30 for my device).
+
+#### `set_volume(volume)`
+
+Set the device volume to the specified volume.
+This does not do any checks for the validity of the supplied value.
+In case an invalid value is supplied, the command is ignored.
 
 #### `get_transport_state()`
 
