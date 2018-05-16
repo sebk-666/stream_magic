@@ -70,13 +70,13 @@ class StreamMagicDevice:
 
         for node in root_xml.getElementsByTagName('service'):
             service_type = self._xml_get_node_text(
-                           node.getElementsByTagName('serviceType')[0])
+                node.getElementsByTagName('serviceType')[0])
 
             control_url = '%s%s' % (urlbase, self._xml_get_node_text(
-                         node.getElementsByTagName('controlURL')[0]))
+                node.getElementsByTagName('controlURL')[0]))
 
             scpd_url = '%s%s' % (urlbase, self._xml_get_node_text(
-                      node.getElementsByTagName('SCPDURL')[0]))
+                node.getElementsByTagName('SCPDURL')[0]))
 
             self.services.update({service_type: {'scpdUrl': scpd_url,
                                                  'ctrlUrl': control_url}})
@@ -213,17 +213,17 @@ class StreamMagicDevice:
 
             for node in xml.getElementsByTagName('action'):
                 action = self._xml_get_node_text(
-                         node.getElementsByTagName('name')[0])
+                    node.getElementsByTagName('name')[0])
 
                 for arg in node.getElementsByTagName('argument'):
                     argument = self._xml_get_node_text(
-                               arg.getElementsByTagName('name')[0])
+                        arg.getElementsByTagName('name')[0])
 
                     direction = self._xml_get_node_text(
-                                arg.getElementsByTagName('direction')[0])
+                        arg.getElementsByTagName('direction')[0])
 
                     rsv = self._xml_get_node_text(
-                          arg.getElementsByTagName('relatedStateVariable')[0])
+                        arg.getElementsByTagName('relatedStateVariable')[0])
 
                     if service not in self.actions.keys():
                         self.actions[service] = dict()
@@ -237,14 +237,6 @@ class StreamMagicDevice:
                             'relatedStateVariable': rsv,
                             'dataType': None
                         }
-
-    def _get_position_info(self):
-        """ Returns a DIDL document with meta data of the currently played
-            track / track position.
-        """
-        response = self._send_cmd('GetPositionInfo')
-        track_data = self._get_response_tag_value(response, 'TrackMetaData')
-        return track_data
 
     def _get_protocol_info(self):
         """ Return a list of audio formats the device supports.
@@ -412,6 +404,16 @@ class StreamMagicDevice:
         response = self._send_cmd('Stop')
         return response
 
+    def trnsprt_seek(self, seek_target):
+        """ Does a seek to the absolute position within the track, specified
+            by seek_target (which is a string with a time representation).
+            example: seek('0:00:30.000') or seek('0:01:15')
+        """
+        # according to the scpd xml, besides ABS_TIME, also REL_TIME and
+        # TRACK_NR should be supported for the Unit parameter, but those
+        # didn't work as expected. So sticking with ABS_TIME for now.
+        self._send_cmd('Seek', Unit='ABS_TIME', Target=seek_target)
+        return None
 
 # Methods to retrieve various information from the device.
 
@@ -445,19 +447,31 @@ class StreamMagicDevice:
         """
         data = dict()
         if self.get_audio_source() == "media player":
-            track_data = self._get_position_info()
-            f = self._get_response_tag_value    # function alias
+            # pylint: disable=C0103
+            f = self._get_response_tag_value    # just a function alias
+            response = self._send_cmd('GetPositionInfo')
+            track_data = f(response, 'TrackMetaData')
             data['artist'] = f(track_data, 'upnp:artist')
             data['trackTitle'] = f(track_data, 'dc:title')
             data['albumArtURI'] = f(track_data, 'upnp:albumArtURI')
             data['genre'] = f(track_data, 'upnp:genre')
             data['origTrackNo'] = f(track_data, 'upnp:originalTrackNumber')
             data['album'] = f(track_data, 'upnp:album')
+            data['currentPos'] = f(response, 'AbsTime')
+            # track duration is expressed as an attribute of the res-tag
+            # within the DIDL structure, e.g.:
+            # <res duration="0:05:07.000"></res>
+            data['trackLength'] = minidom.parseString(track_data)\
+                                         .getElementsByTagName('res')[0]\
+                                         .attributes['duration']\
+                                         .firstChild.data
+            # strip the sub-second specifier, so format becomes H:MM:SS
+            data['trackLength'] = data['trackLength'][:-4]
         else:
             # set all fields to NOT_IMPLEMENTED to at least return some
             # syntactically correct information
             for key in ['artist', 'trackTitle', 'albumArtURI', 'genre',
-                        'origTrackNo', 'album']:
+                        'origTrackNo', 'album', 'currentPos', 'trackLength']:
                 data[key] = 'NOT_IMPLEMENTED'
         return data
 
@@ -579,7 +593,7 @@ class StreamMagicDevice:
                        .firstChild.nodeValue
 
             fmt = dict(pbd.getElementsByTagName('format')[0]
-                          .attributes.items())
+                       .attributes.items())
 
             artist = pbd.getElementsByTagName('artist')[0]\
                         .firstChild.nodeValue

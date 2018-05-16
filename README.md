@@ -155,6 +155,9 @@ Skip playback to the next / previous track.
 #### `trnsprt_stop()`
 Stops playback.
 
+#### `trnsprt_seek(seek_target)`
+Jumps to the position within a track specified by _seek\_target_, a string representing a time, e.g. `'0:02:34'`.
+
 #### `get_audio_source()`
 Returns either `media player`, `internet radio` or `other` depending of the currently playing media.
 
@@ -175,8 +178,20 @@ Note: This ignores the standby setting that is configured in the device menu.
 If the device is configured for _ECO standby_ through the device menu, `power_off(power_state='IDLE')` will still only switch it in to _network standby_ mode and vice versa.
 
 #### `get_current_track_info()`
-When the device is operating in `media player` mode (i.e. playing back files from a local server or storage device`), returns a dict with track information like artist, title, genre and also an URI pointing to the album cover image.
+When the device is operating in `media player` mode (i.e. playing back files from a local server or storage device`), returns a dict with track information like artist, title, genre and also an URI pointing to the album cover image, e.g.:
 
+```python
+{
+  'artist': 'Calexico', 
+  'trackTitle': 'Splitter', 
+  'albumArtURI': 'https://example.com/640x640.jpg', 
+  'genre': 'n/a', 
+  'origTrackNo': '2', 
+  'album': 'Algiers', 
+  'currentPos': '0:00:47', 
+  'trackLength': '0:03:30'
+}
+```
 
 #### `get_preset_list()`
 Returns a list containing the number and description of the device's Internet radio presets, e.g.:
