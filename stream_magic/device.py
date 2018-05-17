@@ -415,6 +415,40 @@ class StreamMagicDevice:
         self._send_cmd('Seek', Unit='ABS_TIME', Target=seek_target)
         return None
 
+    def get_shuffle(self):
+        """ Return the state of the shuffle function as a boolean. """
+        svc_type = 'urn:UuVol-com:service:PlaylistExtension:1'
+        response = self._send_cmd('Shuffle', omitInstanceId=True,
+                                  service_type=svc_type)
+        return bool(int(self._get_response_tag_value(response, 'aShuffle')))
+
+    def set_shuffle(self, state):
+        """ Randomize playlist order.
+            Activate with state=True, deactivate with state=False.
+        """
+        state = int(state)  # turn boolean state into integer
+        svc_type = 'urn:UuVol-com:service:PlaylistExtension:1'
+        self._send_cmd('SetShuffle', aShuffle=state, omitInstanceId=True,
+                       service_type=svc_type)
+        return None
+
+    def get_repeat(self):
+        """ Return the state of the repeat function as a boolean. """
+        svc_type = 'urn:UuVol-com:service:PlaylistExtension:1'
+        response = self._send_cmd('Repeat', omitInstanceId=True,
+                                  service_type=svc_type)
+        return bool(int(self._get_response_tag_value(response, 'aRepeat')))
+
+    def set_repeat(self, state):
+        """ Repeat playlist after reaching the end.
+            Activate with state=True, deactivate with state=False.
+        """
+        state = int(state)  # turn boolean state into integer
+        svc_type = 'urn:UuVol-com:service:PlaylistExtension:1'
+        self._send_cmd('SetRepeat', aRepeat=state, omitInstanceId=True,
+                       service_type=svc_type)
+        return None
+
 # Methods to retrieve various information from the device.
 
     def get_audio_source(self):

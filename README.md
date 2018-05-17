@@ -158,6 +158,19 @@ Stops playback.
 #### `trnsprt_seek(seek_target)`
 Jumps to the position within a track specified by _seek\_target_, a string representing a time, e.g. `'0:02:34'`.
 
+#### `get_repeat() / set_repeat(True|False)`
+When the _repeat_ function is active, the playlist will be restarted at the beginning after finishing the last track.
+The method `get_repeat()` will return _True_ if the _repeat_ function is currently active and _False_ if playback is set to stop after finishing the playlist.
+
+With `set_repeat(True)` the _repeat_ function is enabled while `set_repeat(False)` turns it off.
+
+#### `get_shuffle() / set_shuffle(True|False)`
+The _shuffle_ function randomizes the playlist order when it is active.
+
+The method `get_shuffle()` will return _True_ if the _shuffle_ function is currently active and _False_ if playback happens in the original order.
+
+With `set_shuffle(True)` the _repeat_ function can be turned on while `set_shuffle(False)` disables it.
+
 #### `get_audio_source()`
 Returns either `media player`, `internet radio` or `other` depending of the currently playing media.
 
