@@ -40,7 +40,7 @@ setup(
     version=stream_magic.__version__,
     url='http://github.com/sebk-666/stream_magic/',
     license='Apache Software License',
-    author='Sebastian Kaps',
+    author='Sebastian Kaps (sebk-666)',
     tests_require=['pytest'],
     install_requires=[],
     cmdclass={'test': PyTest},
@@ -54,7 +54,7 @@ setup(
     test_suite='tests.test_stream_magic',
     classifiers=[            # https://pypi.org/pypi?%3Aaction=list_classifiers
         'Programming Language :: Python',
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Natural Language :: English',
         'Environment :: Console',
         'Intended Audience :: Developers',

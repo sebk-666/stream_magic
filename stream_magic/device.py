@@ -11,7 +11,7 @@ information from the device as well as control the device.
 # and largely inspired by Ferry Boender's tutorial at:
 # https://www.electricmonk.nl/log/2016/07/05/exploring-upnp-with-python/
 
-__version__ = '0.10'
+__version__ = '0.16'
 __author__ = 'Sebastian Kaps (sebk-666)'
 
 import urllib.request
